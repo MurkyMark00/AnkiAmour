@@ -26,8 +26,10 @@ build/
 # Data directories
 /data/raw_slides/*.pdf
 /data/slides/*.pdf
+/data/slides/DONE/*.pdf
 /data/json/*.json
 /data/csv/*.csv
+/data/csv/DONE/*.csv
 /data/error/*.log
 /data/error/*.json
 

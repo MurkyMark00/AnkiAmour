@@ -53,6 +53,18 @@ def _move_processed_slides():
                     print(f"[pipeline] Warning: Could not move {filename}: {e}")
 
 
+def _move_merged_deck(merged_filename):
+    """Move merged CSV file from csv/ to csv/DONE/."""
+    file_path = os.path.join(config.CSV_DIR, merged_filename)
+    if os.path.isfile(file_path):
+        done_path = os.path.join(config.CSV_DONE_DIR, merged_filename)
+        try:
+            shutil.move(file_path, done_path)
+            print(f"[pipeline] Moved {merged_filename} to csv/DONE/")
+        except Exception as e:
+            print(f"[pipeline] Warning: Could not move {merged_filename}: {e}")
+
+
 def run(
     prompt_name,
     backend_type="gemini",
@@ -127,12 +139,21 @@ def run(
         print("\nMoving processed slides to DONE folder...")
         _move_processed_slides()
 
-    # Step 6: Cleanup (optional)
-    if cleanup:
-        print("\nCleaning up intermediate files...")
-        _cleanup_json_files()
-        if merge_output is not None:
+    # Step 6: Handle merged deck (move to DONE) and cleanup
+    if merge_output is not None:
+        # Move merged deck to DONE folder
+        print("\nMoving merged deck to csv/DONE folder...")
+        _move_merged_deck(merged_filename)
+        
+        # Cleanup individual CSV files only when merging
+        if cleanup:
+            print("Cleaning up individual CSV files...")
             _cleanup_csv_files(merged_filename)
+
+    # Step 7: Cleanup JSON files (if enabled)
+    if cleanup:
+        print("Cleaning up intermediate JSON files...")
+        _cleanup_json_files()
 
     print("\n" + "=" * 60)
     print("AnkiAmour Pipeline Complete!")
