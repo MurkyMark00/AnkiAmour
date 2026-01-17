@@ -22,15 +22,19 @@ AnkiAmour/
 │       ├── gemini.py            # Gemini API backend
 │       └── chunking.py          # PDF chunking utilities
 ├── data/                         # Data directories
-│   ├── raw_slides/              # Input PDF files
-│   ├── slides/                  # Sanitized PDFs
+│   ├── raw_slides/              # Unsanitized PDF files
+│   │   └── DONE/                # Processed raw slides (when --skip-sanitize not used)
+│   ├── slides/                  # Sanitized PDFs (input directory)
+│   │   └── DONE/                # Processed sanitized slides (when --skip-sanitize not used)
 │   ├── json/                    # AI-generated JSON cards
-│   ├── csv/                     # Converted CSV files
+│   │   └── DONE/                # Archived JSON files (when --skip-sanitize used)
+│   ├── csv/                     # Generated CSV files
+│   │   └── DONE/                # Merged master deck and archived CSVs
 │   └── error/                   # Error logs
 ├── prompts/                      # Prompt templates
 ├── main.py                       # Entry point
 ├── requirements.txt              # Python dependencies
-├── .env.example                  # Environment variables template
+├── .env                          # Environment variables (create from .env.example)
 ├── .gitignore                    # Git ignore rules
 └── README.md                     # This file
 ```
@@ -79,31 +83,42 @@ Options:
   -p, --prompt PROMPT              Prompt file name (default: QAClozeSourceYield)
   -t, --tag TAG                    Tag prefix for cards
   -m, --merge [NAME]               Merge CSVs into a master deck
-  --skip-sanitize                  Skip file sanitization step
+  --skip-sanitize                  Preserve JSON files (move to DONE) instead of deleting them. Does NOT skip sanitization.
 ```
 
 ### Examples
 
 ```bash
 # Process with Claude and merge into master deck
+# Result: Master deck in csv/DONE/, individual CSVs deleted
 python main.py --backend claude --prompt QAClozeSourceYield --merge
 
-# Process with Gemini with custom tag prefix
-python main.py --backend gemini --prompt QACloze --tag "Medical_" --merge custom_deck
+# Process with Gemini with custom tag prefix, no merge
+# Result: All CSVs moved to csv/DONE/
+python main.py --backend gemini --prompt QACloze --tag "Medical_"
 
-# Skip sanitization (PDFs already sanitized)
+# Preserve JSON files for inspection (don't delete them)
+# Result: JSON files moved to json/DONE/, raw slides moved to raw_slides/DONE/
 python main.py --backend claude --skip-sanitize --merge
 
 # Process without merging
+# Result: Individual CSV files moved to csv/DONE/
 python main.py --backend claude --prompt QAClozeSourceYield
 ```
 
 ## Pipeline Steps
 
-1. **Sanitize** - Clean PDF filenames, convert Turkish characters to ASCII, optionally compress large files
+The pipeline always runs through these steps:
+
+1. **Sanitize** - Clean PDF filenames, convert Turkish characters to ASCII, optionally compress large files. Moves PDFs from `data/slides/` → `data/raw_slides/`
 2. **AI Processing** - Upload PDFs to AI model, generate JSON cards
 3. **Convert to CSV** - Transform JSON cards to CSV format (Front|Back|Tags)
-4. **Merge (Optional)** - Combine all CSV files into a single master deck
+4. **JSON Handling** - Based on `--skip-sanitize` flag:
+   - **Without `--skip-sanitize`**: JSON files are deleted, raw slides moved to `raw_slides/DONE/`
+   - **With `--skip-sanitize`**: JSON files moved to `json/DONE/` for preservation
+5. **CSV Handling** - Based on `--merge` flag:
+   - **Without `--merge`**: All CSV files moved to `csv/DONE/`
+   - **With `--merge`**: Master deck moved to `csv/DONE/`, individual CSV files deleted
 
 ## Configuration
 
@@ -119,6 +134,8 @@ python main.py --backend claude --prompt QAClozeSourceYield
 - `MAX_RETRIES` - API retry attempts (default: 3)
 - `RETRY_DELAY_SECONDS` - Delay between retries (default: 5)
 - `PDF_COMPRESSION_SIZE_MB` - Threshold for compression (default: 50)
+- `PDF_CHUNK_MIN_PAGES` - Minimum pages per PDF chunk (default: 25, configurable via `PDF_CHUNK_MIN_PAGES` env var)
+- `PDF_CHUNK_MAX_PAGES` - Maximum pages per PDF chunk (default: 40, hard limit for token constraints, configurable via `PDF_CHUNK_MAX_PAGES` env var)
 
 ## Error Handling
 

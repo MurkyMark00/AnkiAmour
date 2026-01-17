@@ -13,6 +13,8 @@ def _cleanup_json_files():
     """Delete all files in the json directory."""
     if os.path.isdir(config.JSON_DIR):
         for filename in os.listdir(config.JSON_DIR):
+            if filename == "DONE":
+                continue
             file_path = os.path.join(config.JSON_DIR, filename)
             try:
                 if os.path.isfile(file_path):
@@ -23,11 +25,45 @@ def _cleanup_json_files():
                 print(f"[pipeline] Warning: Could not delete {file_path}: {e}")
 
 
-def _cleanup_csv_files(keep_filename):
-    """Delete individual CSV files, keeping only the merged one."""
+def _move_json_to_done():
+    """Move all JSON files from json/ to json/DONE/."""
+    if os.path.isdir(config.JSON_DIR):
+        for filename in os.listdir(config.JSON_DIR):
+            if filename == "DONE":
+                continue
+            file_path = os.path.join(config.JSON_DIR, filename)
+            if os.path.isfile(file_path):
+                done_path = os.path.join(config.JSON_DONE_DIR, filename)
+                try:
+                    shutil.move(file_path, done_path)
+                    print(f"[pipeline] Moved {filename} to json/DONE/")
+                except Exception as e:
+                    print(f"[pipeline] Warning: Could not move {filename}: {e}")
+
+
+def _move_raw_slides_to_done():
+    """Move all processed PDF files from raw_slides/ to raw_slides/DONE/."""
+    if os.path.isdir(config.RAW_SLIDES_DIR):
+        for filename in os.listdir(config.RAW_SLIDES_DIR):
+            if filename == "DONE":
+                continue
+            file_path = os.path.join(config.RAW_SLIDES_DIR, filename)
+            if os.path.isfile(file_path):
+                done_path = os.path.join(config.RAW_SLIDES_DONE_DIR, filename)
+                try:
+                    shutil.move(file_path, done_path)
+                    print(f"[pipeline] Moved {filename} to raw_slides/DONE/")
+                except Exception as e:
+                    print(f"[pipeline] Warning: Could not move {filename}: {e}")
+
+
+def _cleanup_csv_files():
+    """Delete all CSV files in the csv directory (except in DONE subfolder)."""
     if os.path.isdir(config.CSV_DIR):
         for filename in os.listdir(config.CSV_DIR):
-            if filename.lower().endswith(".csv") and filename != keep_filename:
+            if filename == "DONE":
+                continue
+            if filename.lower().endswith(".csv"):
                 file_path = os.path.join(config.CSV_DIR, filename)
                 try:
                     if os.path.isfile(file_path):
@@ -36,21 +72,21 @@ def _cleanup_csv_files(keep_filename):
                     print(f"[pipeline] Warning: Could not delete {file_path}: {e}")
 
 
-def _move_processed_slides():
-    """Move all processed PDF files from slides/ to slides/DONE/."""
-    if os.path.isdir(config.SLIDES_DIR):
-        for filename in os.listdir(config.SLIDES_DIR):
-            # Skip the DONE directory itself
+def _move_all_csv_to_done():
+    """Move all CSV files from csv/ to csv/DONE/."""
+    if os.path.isdir(config.CSV_DIR):
+        for filename in os.listdir(config.CSV_DIR):
             if filename == "DONE":
                 continue
-            file_path = os.path.join(config.SLIDES_DIR, filename)
-            if os.path.isfile(file_path):
-                done_path = os.path.join(config.SLIDES_DONE_DIR, filename)
-                try:
-                    shutil.move(file_path, done_path)
-                    print(f"[pipeline] Moved {filename} to DONE/")
-                except Exception as e:
-                    print(f"[pipeline] Warning: Could not move {filename}: {e}")
+            if filename.lower().endswith(".csv"):
+                file_path = os.path.join(config.CSV_DIR, filename)
+                if os.path.isfile(file_path):
+                    done_path = os.path.join(config.CSV_DONE_DIR, filename)
+                    try:
+                        shutil.move(file_path, done_path)
+                        print(f"[pipeline] Moved {filename} to csv/DONE/")
+                    except Exception as e:
+                        print(f"[pipeline] Warning: Could not move {filename}: {e}")
 
 
 def _move_merged_deck(merged_filename):
@@ -88,14 +124,13 @@ def run(
     print("AnkiAmour Pipeline Starting")
     print("=" * 60)
 
-    # Step 1: Sanitize
-    if not skip_sanitize:
-        print("\nStep 1/4: Sanitizing raw slides...")
-        try:
-            sanitizer.run()
-        except Exception as exc:
-            print(f"[pipeline] Sanitization failed: {exc}")
-            return
+    # Step 1: Always Sanitize (regardless of skip_sanitize flag)
+    print("\nStep 1/4: Sanitizing raw slides...")
+    try:
+        sanitizer.run()
+    except Exception as exc:
+        print(f"[pipeline] Sanitization failed: {exc}")
+        return
 
     # Step 2: PDF to JSON
     print("\nStep 2/4: Converting PDFs to JSON...")
@@ -134,26 +169,25 @@ def run(
     else:
         print("\nStep 4/4: Skipping CSV merge (not requested)...")
 
-    # Step 5: Move processed slides to DONE folder (unless skip_sanitize was used)
-    if not skip_sanitize:
-        print("\nMoving processed slides to DONE folder...")
-        _move_processed_slides()
-
-    # Step 6: Handle merged deck (move to DONE) and cleanup
-    if merge_output is not None:
-        # Move merged deck to DONE folder
-        print("\nMoving merged deck to csv/DONE folder...")
-        _move_merged_deck(merged_filename)
-        
-        # Cleanup individual CSV files only when merging
-        if cleanup:
-            print("Cleaning up individual CSV files...")
-            _cleanup_csv_files(merged_filename)
-
-    # Step 7: Cleanup JSON files (if enabled)
-    if cleanup:
-        print("Cleaning up intermediate JSON files...")
+    # Step 5: Handle JSON files based on skip_sanitize flag
+    if skip_sanitize:
+        print("\nPreserving JSON files (moving to json/DONE/)...")
+        _move_json_to_done()
+    else:
+        print("\nCleaning up JSON files...")
         _cleanup_json_files()
+        print("Moving processed slides from raw_slides/ to raw_slides/DONE/...")
+        _move_raw_slides_to_done()
+
+    # Step 6: Handle CSV files
+    if merge_output is not None:
+        print("\nMoving merged deck to csv/DONE/...")
+        _move_merged_deck(merged_filename)
+        print("Deleting individual CSV files...")
+        _cleanup_csv_files()
+    else:
+        print("\nMoving all CSV files to csv/DONE/...")
+        _move_all_csv_to_done()
 
     print("\n" + "=" * 60)
     print("AnkiAmour Pipeline Complete!")
