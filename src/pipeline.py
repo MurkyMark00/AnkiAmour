@@ -36,6 +36,23 @@ def _cleanup_csv_files(keep_filename):
                     print(f"[pipeline] Warning: Could not delete {file_path}: {e}")
 
 
+def _move_processed_slides():
+    """Move all processed PDF files from slides/ to slides/DONE/."""
+    if os.path.isdir(config.SLIDES_DIR):
+        for filename in os.listdir(config.SLIDES_DIR):
+            # Skip the DONE directory itself
+            if filename == "DONE":
+                continue
+            file_path = os.path.join(config.SLIDES_DIR, filename)
+            if os.path.isfile(file_path):
+                done_path = os.path.join(config.SLIDES_DONE_DIR, filename)
+                try:
+                    shutil.move(file_path, done_path)
+                    print(f"[pipeline] Moved {filename} to DONE/")
+                except Exception as e:
+                    print(f"[pipeline] Warning: Could not move {filename}: {e}")
+
+
 def run(
     prompt_name,
     backend_type="gemini",
@@ -105,7 +122,12 @@ def run(
     else:
         print("\nStep 4/4: Skipping CSV merge (not requested)...")
 
-    # Step 5: Cleanup (optional)
+    # Step 5: Move processed slides to DONE folder (unless skip_sanitize was used)
+    if not skip_sanitize:
+        print("\nMoving processed slides to DONE folder...")
+        _move_processed_slides()
+
+    # Step 6: Cleanup (optional)
     if cleanup:
         print("\nCleaning up intermediate files...")
         _cleanup_json_files()
