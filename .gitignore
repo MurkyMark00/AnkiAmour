@@ -1,0 +1,44 @@
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+env/
+venv/
+.venv
+*.egg-info/
+dist/
+build/
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+.DS_Store
+
+# Environment
+.env
+.env.local
+
+# Data directories
+/data/raw_slides/*.pdf
+/data/slides/*.pdf
+/data/json/*.json
+/data/csv/*.csv
+/data/error/*.log
+/data/error/*.json
+
+# Except keep directory structure
+!data/.gitkeep
+!data/raw_slides/.gitkeep
+!data/slides/.gitkeep
+!data/json/.gitkeep
+!data/csv/.gitkeep
+!data/error/.gitkeep
+
+# Temporary files
+*.tmp
+*.temp

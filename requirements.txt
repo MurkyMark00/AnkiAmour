@@ -1,0 +1,9 @@
+# Python dependencies for AnkiAmour
+
+# Core dependencies
+anthropic>=0.28.0
+google-genai>=0.5.0
+pypdf>=4.0.0
+
+# Utilities
+python-dotenv>=1.0.0
