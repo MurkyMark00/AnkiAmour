@@ -27,10 +27,8 @@ build/
 /data/raw_slides/*.pdf
 /data/slides/*.pdf
 /data/slides/DONE/*.pdf
-/data/json/*.json
-/data/json/DONE/*.json
-/data/csv/*.csv
-/data/csv/DONE/*.csv
+/data/json/
+/data/csv/
 /data/error/*.log
 /data/error/*.json
 
