@@ -29,6 +29,7 @@ GEMINI_API_KEY = os.getenv("GEMINI_API_KEY", "")
 CLAUDE_API_KEY = os.getenv("CLAUDE_API_KEY", "")
 GEMINI_MODEL = os.getenv("GEMINI_MODEL", "gemini-2.5-pro")
 CLAUDE_MODEL = os.getenv("CLAUDE_MODEL", "claude-sonnet-4-5-20250929")
+DEFAULT_PROMPT = os.getenv("DEFAULT_PROMPT", "QAClozeSourceYield")
 
 # Pipeline Configuration
 MAX_RETRIES = 3

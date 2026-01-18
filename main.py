@@ -11,7 +11,7 @@ Pipeline:
 
 import argparse
 import sys
-from src import pipeline
+from src import pipeline, config
 
 
 def main():
@@ -38,8 +38,8 @@ Examples:
     parser.add_argument(
         "--prompt",
         "-p",
-        default="QAClozeSourceYield",
-        help="Prompt file to use (without .txt extension). Default: QAClozeSourceYield",
+        default=config.DEFAULT_PROMPT,
+        help=f"Prompt file to use (without .txt extension). Default: {config.DEFAULT_PROMPT}",
     )
 
     parser.add_argument(
