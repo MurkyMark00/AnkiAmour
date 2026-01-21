@@ -47,12 +47,15 @@ class AIBackend(ABC):
         Returns:
             Tuple of (normalized_cards, error_message)
         """
-        is_valid, error_msg = utils.validate_required_fields(cards)
+        is_valid, error_msg, filtered_cards = utils.validate_required_fields(cards)
         if not is_valid:
             return None, error_msg
 
+        # Use filtered cards if available, otherwise use original
+        cards_to_normalize = filtered_cards if filtered_cards is not None else cards
+
         # Normalize cloze deletions
-        cards = utils.normalize_cloze_payload(cards)
+        cards = utils.normalize_cloze_payload(cards_to_normalize)
 
         return cards, ""
 
@@ -66,3 +69,29 @@ class AIBackend(ABC):
                 card["importance_value"] = tag
 
         return cards
+
+    def validate_and_tag_response(self, cards, tag):
+        """
+        Validate response and add file tag in one step with debug info.
+
+        Args:
+            cards: Raw response from AI
+            tag: Filename tag to add
+
+        Returns:
+            Tuple of (validated_cards, error_message)
+        """
+        is_valid, error_msg, filtered_cards = utils.validate_required_fields(cards)
+        if not is_valid:
+            return None, error_msg
+
+        # Use filtered cards if available, otherwise use original
+        cards_to_normalize = filtered_cards if filtered_cards is not None else cards
+
+        # Normalize cloze deletions
+        cards = utils.normalize_cloze_payload(cards_to_normalize)
+
+        # Add tag
+        cards = self.add_file_tag(cards, tag)
+
+        return cards, ""

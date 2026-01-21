@@ -78,6 +78,8 @@ def chunk_pdf(pdf_path, min_pages=None, max_pages=None):
     chunks = []
     start = 0
     
+    print(f"[chunking] Splitting PDF ({total_pages} pages) into {num_chunks} chunk(s) (min: {min_pages}, max: {max_pages})")
+    
     for i in range(num_chunks):
         # First 'remainder' chunks get one extra page
         chunk_size = base_pages + (1 if i < remainder else 0)
@@ -87,6 +89,9 @@ def chunk_pdf(pdf_path, min_pages=None, max_pages=None):
             logger.warning(
                 f"Chunk {i+1}/{num_chunks}: {chunk_size} pages (ideal range: {min_pages}-{max_pages})"
             )
+            print(f"[chunking] ⚠️  Chunk {i+1}/{num_chunks}: {chunk_size} pages (outside ideal range {min_pages}-{max_pages})")
+        else:
+            print(f"[chunking] Chunk {i+1}/{num_chunks}: {chunk_size} pages")
         
         end = min(start + chunk_size - 1, total_pages - 1)
         chunk_path = extract_pages(pdf_path, start, end)

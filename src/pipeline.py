@@ -41,6 +41,22 @@ def _move_json_to_done():
                     print(f"[pipeline] Warning: Could not move {filename}: {e}")
 
 
+def _move_processed_slides_to_done():
+    """Move all processed PDF files from slides/ to slides/DONE/."""
+    if os.path.isdir(config.SLIDES_DIR):
+        for filename in os.listdir(config.SLIDES_DIR):
+            if filename == "DONE":
+                continue
+            file_path = os.path.join(config.SLIDES_DIR, filename)
+            if os.path.isfile(file_path):
+                done_path = os.path.join(config.SLIDES_DONE_DIR, filename)
+                try:
+                    shutil.move(file_path, done_path)
+                    print(f"[pipeline] Moved {filename} to slides/DONE/")
+                except Exception as e:
+                    print(f"[pipeline] Warning: Could not move {filename}: {e}")
+
+
 def _move_raw_slides_to_done():
     """Move all processed PDF files from raw_slides/ to raw_slides/DONE/."""
     if os.path.isdir(config.RAW_SLIDES_DIR):
@@ -108,6 +124,7 @@ def run(
     merge_output=None,
     skip_sanitize=False,
     cleanup=True,
+    compare_mode=False,
 ):
     """
     Run the full AnkiAmour pipeline.
@@ -119,6 +136,7 @@ def run(
         merge_output: Output filename for merged CSV (None to skip merge)
         skip_sanitize: Skip file sanitization step if True
         cleanup: Delete intermediate files (JSON and individual CSVs) if True (default)
+        compare_mode: If True, don't move files to DONE folders (for comparing prompts)
     """
     print("=" * 60)
     print("AnkiAmour Pipeline Starting")
@@ -169,17 +187,27 @@ def run(
     else:
         print("\nStep 4/4: Skipping CSV merge (not requested)...")
 
-    # Step 5: Handle JSON files based on skip_sanitize flag
-    if skip_sanitize:
+    # Step 5: Handle JSON files based on cleanup and compare flags
+    if compare_mode:
+        print("\nCompare mode: preserving JSON files...")
+        pass  # Don't move or delete JSON files
+    elif not cleanup:
         print("\nPreserving JSON files (moving to json/DONE/)...")
         _move_json_to_done()
     else:
         print("\nCleaning up JSON files...")
         _cleanup_json_files()
-        print("Moving processed slides from raw_slides/ to raw_slides/DONE/...")
-        _move_raw_slides_to_done()
 
-    # Step 6: Handle CSV files
+    # Step 6: Handle PDF file movement (unless in compare mode)
+    if not compare_mode:
+        if skip_sanitize:
+            print("Moving processed slides from raw_slides/ to raw_slides/DONE/...")
+            _move_raw_slides_to_done()
+        else:
+            print("Moving processed slides from slides/ to slides/DONE/...")
+            _move_processed_slides_to_done()
+
+    # Step 7: Handle CSV files
     if merge_output is not None:
         print("\nMoving merged deck to csv/DONE/...")
         _move_merged_deck(merged_filename)

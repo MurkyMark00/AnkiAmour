@@ -2,10 +2,12 @@
 
 import json
 import os
+import time
 from .. import config, utils, prompts
 from ..ai_backends.base import AIBackend
 from ..ai_backends.claude import ClaudeBackend
 from ..ai_backends.gemini import GeminiBackend
+from ..ai_backends import chunking
 
 
 def get_backend(backend_type="claude"):
@@ -89,8 +91,38 @@ def run(prompt_name, backend_type="claude", tag_prefix=""):
         pdf_tag = utils.sanitize_tag(pdf_base)
         combined_tag = f"{tag_prefix}{pdf_tag}" if tag_prefix else pdf_tag
 
-        # Process PDF
-        cards = backend.process_pdf(pdf_path, prompt_text)
+        # Check if PDF needs chunking
+        from pypdf import PdfReader
+        reader = PdfReader(pdf_path)
+        total_pages = len(reader.pages)
+        print(f"[ai_processor] PDF has {total_pages} pages")
+
+        # Chunk if necessary
+        if total_pages > config.PDF_CHUNK_MAX_PAGES:
+            print(f"[ai_processor] PDF exceeds max pages ({config.PDF_CHUNK_MAX_PAGES}), chunking...")
+            chunks = chunking.chunk_pdf(pdf_path)
+            all_cards = []
+            
+            for chunk_idx, chunk_path in enumerate(chunks, start=1):
+                print(f"[ai_processor] Processing chunk {chunk_idx}/{len(chunks)}...")
+                chunk_start = time.time()
+                
+                cards = backend.process_pdf(chunk_path, prompt_text)
+                
+                chunk_time = time.time() - chunk_start
+                if cards:
+                    print(f"[ai_processor] Chunk {chunk_idx} completed in {chunk_time:.1f}s with {len(cards)} cards")
+                    all_cards.extend(cards)
+                else:
+                    print(f"[ai_processor] Chunk {chunk_idx} failed or returned no cards")
+                    
+            cards = all_cards if all_cards else None
+        else:
+            print(f"[ai_processor] Processing as single file...")
+            process_start = time.time()
+            cards = backend.process_pdf(pdf_path, prompt_text)
+            process_time = time.time() - process_start
+            print(f"[ai_processor] Processing completed in {process_time:.1f}s")
 
         if cards is None:
             utils.log_error(
@@ -115,9 +147,25 @@ def run(prompt_name, backend_type="claude", tag_prefix=""):
             )
             print(f"[ai_processor] Invalid card structure for {filename}; skipping.")
             continue
+        
+        # Log any auto-corrections made during validation
+        if error_msg:
+            try:
+                correction_info = json.loads(error_msg)
+                if "corrected_cards" in correction_info and correction_info["corrected_cards"]:
+                    utils.log_error(
+                        config.ERROR_DIR,
+                        "ai_processor.py",
+                        f"Auto-corrected {len(correction_info['corrected_cards'])} cards with missing fields: {json.dumps(correction_info['corrected_cards'])}",
+                        processed_file_name=filename,
+                        prompt_file_name=prompt_name,
+                    )
+            except (json.JSONDecodeError, TypeError):
+                pass  # error_msg is not correction info, skip logging
 
         # Add file tag
         tagged_cards = backend.add_file_tag(validated_cards, combined_tag)
+        print(f"[ai_processor] Added tag '{combined_tag}' to {len(tagged_cards)} cards")
 
         # Write output
         json_output_name = f"{pdf_base}.json"
@@ -137,7 +185,7 @@ def run(prompt_name, backend_type="claude", tag_prefix=""):
             print(f"[ai_processor] Failed to write JSON for {filename}; skipping.")
             continue
 
-        print(f"[ai_processor] Wrote JSON to {json_output_name}.")
+        print(f"[ai_processor] ✓ Wrote {len(tagged_cards)} cards to {json_output_name}.")
 
     print(f"[ai_processor] {backend_type.upper()} processing complete.")
 

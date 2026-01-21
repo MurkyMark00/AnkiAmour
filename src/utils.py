@@ -129,22 +129,70 @@ def normalize_cloze_payload(value):
 def validate_required_fields(items, required_fields=None):
     """
     Ensure every card has required fields.
-    Returns (is_valid, error_message).
+    Returns (is_valid, error_message, filtered_items).
+    Filters out invalid cards and returns valid ones.
+    
+    Special handling: If a card has main_content but is missing only
+    importance_value or extra_field, fill them with empty strings.
     """
     if required_fields is None:
         required_fields = {"main_content", "extra_field", "importance_value"}
 
     if not isinstance(items, list):
-        return False, "AI response JSON is not a list."
+        return False, "AI response JSON is not a list.", None
+
+    valid_cards = []
+    invalid_count = 0
+    corrected_cards = []
 
     for index, item in enumerate(items, start=1):
         if not isinstance(item, dict):
-            return False, f"Card #{index} is not an object."
+            item_type = type(item).__name__
+            item_preview = str(item)[:100] if item else "None/empty"
+            error_msg = f"Card #{index} skipped: not an object (type: {item_type}, value: {item_preview})"
+            print(f"[validation] {error_msg}")
+            invalid_count += 1
+            continue
+        
         missing = required_fields.difference(item.keys())
         if missing:
-            return False, f"Card #{index} is missing fields: {sorted(missing)}"
+            # Check if card has main_content and only missing importance_value or extra_field
+            if "main_content" in item.keys() and missing.issubset({"importance_value", "extra_field"}):
+                # Fill missing fields with empty strings
+                for field in missing:
+                    item[field] = ""
+                corrected_cards.append({
+                    "card_index": index,
+                    "missing_fields": sorted(missing)
+                })
+                error_msg = f"Card #{index} auto-corrected: filled missing fields {sorted(missing)} with empty strings"
+                print(f"[validation] {error_msg}")
+                valid_cards.append(item)
+            else:
+                error_msg = f"Card #{index} skipped: missing fields {sorted(missing)}"
+                print(f"[validation] {error_msg}")
+                invalid_count += 1
+                continue
+        else:
+            valid_cards.append(item)
 
-    return True, ""
+    if not valid_cards:
+        return False, f"No valid cards found. {invalid_count} cards were invalid.", None
+    
+    if invalid_count > 0 or corrected_cards:
+        summary = f"Recovered {len(valid_cards)} valid cards"
+        if corrected_cards:
+            summary += f" ({len(corrected_cards)} auto-corrected"
+            if invalid_count > 0:
+                summary += f", {invalid_count} skipped)"
+            else:
+                summary += ")"
+        elif invalid_count > 0:
+            summary += f" (skipped {invalid_count} invalid ones)"
+        print(f"[validation] {summary}")
+        return True, json.dumps({"corrected_cards": corrected_cards}), valid_cards
+    
+    return True, "", items
 
 
 def get_pdf_files(directory):

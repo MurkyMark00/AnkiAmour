@@ -58,13 +58,21 @@ class GeminiBackend(AIBackend):
         for attempt in range(1, self.max_retries + 1):
             try:
                 # Upload PDF
+                print(f"[gemini] Uploading PDF...")
+                upload_start = time.time()
                 uploaded_file = self._upload_file(pdf_path)
+                upload_time = time.time() - upload_start
+                print(f"[gemini] PDF uploaded in {upload_time:.1f}s")
 
                 # Generate response
+                print(f"[gemini] Generating content...")
+                gen_start = time.time()
                 response = self.client.models.generate_content(
                     model=self.model_name,
                     contents=[uploaded_file, prompt_text],
                 )
+                gen_time = time.time() - gen_start
+                print(f"[gemini] Content generated in {gen_time:.1f}s")
 
                 raw_text = self._extract_text(response)
 
@@ -72,11 +80,14 @@ class GeminiBackend(AIBackend):
                 try:
                     cleaned_text = utils.extract_json_payload(raw_text)
                     cards = json.loads(cleaned_text)
+                    print(f"[gemini] Generated {len(cards)} cards")
                     return cards
                 except json.JSONDecodeError:
+                    print(f"[gemini] JSON parsing failed")
                     return None
 
             except Exception as exc:
+                print(f"[gemini] Error (attempt {attempt}/{self.max_retries}): {exc}")
                 if utils.is_retryable_error(exc) and attempt < self.max_retries:
                     time.sleep(self.retry_delay)
                     continue

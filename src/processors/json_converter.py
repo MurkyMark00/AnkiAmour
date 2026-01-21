@@ -33,7 +33,7 @@ def run():
             print(f"[json_converter] Failed to read {filename}; skipping.")
             continue
 
-        is_valid, validation_message = utils.validate_required_fields(cards)
+        is_valid, validation_message, filtered_cards = utils.validate_required_fields(cards)
         if not is_valid:
             utils.log_error(
                 config.ERROR_DIR,
@@ -43,6 +43,10 @@ def run():
             )
             print(f"[json_converter] Invalid structure in {filename}; skipping file.")
             continue
+        
+        # Use filtered cards if some were invalid, otherwise use original
+        cards_to_write = filtered_cards if filtered_cards is not None else cards
+        print(f"[json_converter] Converting {len(cards_to_write)} cards to CSV...")
 
         try:
             # newline="" avoids CSV writer adding extra blank lines on some platforms.
@@ -54,7 +58,7 @@ def run():
                     lineterminator="\n",
                 )
 
-                for card in cards:
+                for card in cards_to_write:
                     writer.writerow(
                         [
                             card["main_content"],
@@ -72,7 +76,7 @@ def run():
             print(f"[json_converter] Failed to write CSV for {filename}.")
             continue
 
-        print(f"[json_converter] Wrote CSV to {csv_filename}.")
+        print(f"[json_converter] ✓ Wrote {len(cards_to_write)} cards to {csv_filename}.")
 
     print("[json_converter] Conversion complete.")
 

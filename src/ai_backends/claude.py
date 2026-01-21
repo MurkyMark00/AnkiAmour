@@ -47,6 +47,7 @@ class ClaudeBackend(AIBackend):
                     pdf_data = pdf_file.read()
 
                 # Create stream with PDF attachment
+                start_time = time.time()
                 stream = self.client.messages.create(
                     model=self.model_name,
                     max_tokens=64000,
@@ -74,20 +75,28 @@ class ClaudeBackend(AIBackend):
 
                 # Collect streamed response
                 raw_text = ""
+                chunk_count = 0
                 for event in stream:
                     if event.type == "content_block_delta":
                         if hasattr(event.delta, "text"):
                             raw_text += event.delta.text
+                            chunk_count += 1
+
+                elapsed_time = time.time() - start_time
+                print(f"[claude] Received {chunk_count} stream chunks in {elapsed_time:.1f}s")
 
                 # Parse JSON from response
                 try:
                     cleaned_text = utils.extract_json_payload(raw_text)
                     cards = json.loads(cleaned_text)
+                    print(f"[claude] Generated {len(cards)} cards")
                     return cards
                 except json.JSONDecodeError as e:
+                    print(f"[claude] JSON parsing failed: {e}")
                     return None
 
             except Exception as exc:
+                print(f"[claude] Error (attempt {attempt}/{self.max_retries}): {exc}")
                 if utils.is_retryable_error(exc) and attempt < self.max_retries:
                     time.sleep(self.retry_delay)
                     continue

@@ -27,36 +27,54 @@ Place PDF files in `data/raw_slides/`
 
 ## 4️⃣ Run Pipeline
 
-### Simplest (Claude + Default Prompt + Merge)
+### Simplest (Gemini + Default Prompt + Merge)
 ```bash
 python main.py --merge
 ```
+Result: `slides/DONE/`, `csv/DONE/_MASTERDECK.csv`, JSON deleted
 
-### With Gemini
+### With Claude
 ```bash
-python main.py --backend gemini --merge
+python main.py --backend claude --merge
 ```
 
-### Custom Prompt
+### Custom Prompt + No Merge
 ```bash
-python main.py --backend claude --prompt QACloze --merge
+python main.py --backend gemini --prompt QACloze
 ```
+Result: `slides/DONE/`, individual CSVs in `csv/DONE/`
+
+### Preserve JSON for Inspection
+```bash
+python main.py --no-cleanup --merge
+```
+Result: `slides/DONE/`, `json/DONE/`, `csv/DONE/_MASTERDECK.csv`
 
 ### With Tag Prefix
 ```bash
-python main.py --backend claude --tag "MED_" --merge custom_deck
+python main.py --tag "MED_" --merge custom_deck
 ```
 
-### No Merge (Just Generate Cards)
+### Process Raw Slides (Skip Sanitization)
 ```bash
-python main.py --backend claude --prompt QAClozeSourceYield
+python main.py --skip-sanitize --no-cleanup --merge
 ```
+Result: `raw_slides/DONE/`, `json/DONE/`, `csv/DONE/`
+
+### Compare Prompts (Keep Files in Place)
+```bash
+python main.py --prompt QACloze --compare
+python main.py --prompt QAClozeSourceYield --compare
+```
+Result: All files remain in original folders (no DONE moves), can re-run multiple times
 
 ## 📁 Output Location
 
-- **JSON cards**: `data/json/`
-- **CSV files**: `data/csv/`
-- **Merged deck**: `data/csv/_MASTERDECK.csv` or `data/csv/{custom_name}.csv`
+- **Input PDFs**: `data/raw_slides/` (or `data/slides/` after sanitization)
+- **Processed PDFs**: Moved to `DONE/` subfolder (unless `--compare`)
+- **JSON cards**: `data/json/` (deleted by default, preserved with `--no-cleanup`)
+- **CSV files**: `data/csv/` → `data/csv/DONE/`
+- **Merged deck**: `data/csv/DONE/_MASTERDECK.csv` or custom name
 - **Errors**: `data/error/errors.log`
 
 ## 🔧 Configuration
@@ -118,11 +136,13 @@ cat data/error/errors.log
 
 ## 💡 Pro Tips
 
-- Use `--skip-sanitize` if PDFs are already cleaned
+- Use `--skip-sanitize` if PDFs are already cleaned (keeps them in `raw_slides/DONE/`)
+- Use `--no-cleanup` to preserve JSON for debugging (moves to `json/DONE/`)
+- Use `--compare` to test multiple prompts on the same PDFs without moving files
 - Large PDFs (>50MB) are automatically compressed
 - All errors logged to `data/error/errors.log`
 - Use different output names to keep multiple decks: `--merge deck_v1`, `--merge deck_v2`
-- Preview cards in `data/json/` before importing to Anki
+- Default behavior: `--merge` moves to `slides/DONE/` after processing
 
 ## 🆘 More Help
 

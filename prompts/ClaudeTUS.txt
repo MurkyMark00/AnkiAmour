@@ -60,7 +60,7 @@ Each card must contain exactly three properties:
 * Add clinical pearls, mnemonics, and high-yield details
 * Include contrasting information when relevant
 * End with source attribution: "Source: [Book name, question X]" or "External knowledge"
-* Example: "<b>High-yield for TUS:</b> This classic triad appears in 90% of cases. <i>Differential diagnosis</i> includes: minimal change disease (children), FSGS (adults), membranous nephropathy. <b>Treatment algorithm:</b> Start with ACE inhibitors + dietary protein restriction. Source: TUS Internal Medicine Questions, Q45"
+* Example: "<b>High-yield for TUS:</b> This classic triad appears in 90% of cases. <i>Differential diagnosis</i> includes: minimal change disease (children), FSGS (adults), membranous nephropathy. <b>Treatment algorithm:</b> Start with ACE inhibitors + dietary protein restriction. Source: TUS Internal Medicine Questions, Year 2020, Q45"
 
 **3. importance_value** (String)
 * Must be exactly one of: "HighYield", "MediumYield", or "LowYield"

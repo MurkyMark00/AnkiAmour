@@ -67,7 +67,7 @@ Place prompt files in the `prompts/` directory. Prompt files should be `.txt` fi
 
 ## Usage
 
-### Basic Usage (Claude with default prompt)
+### Basic Usage (Gemini with default prompt)
 
 ```bash
 python main.py --merge
@@ -79,46 +79,63 @@ python main.py --merge
 python main.py --help
 
 Options:
-  -b, --backend {claude,gemini}    AI backend to use (default: claude)
+  -b, --backend {claude,gemini}    AI backend to use (default: gemini)
   -p, --prompt PROMPT              Prompt file name (default: QAClozeSourceYield)
   -t, --tag TAG                    Tag prefix for cards
   -m, --merge [NAME]               Merge CSVs into a master deck
-  --skip-sanitize                  Preserve JSON files (move to DONE) instead of deleting them. Does NOT skip sanitization.
+  --skip-sanitize                  Process PDFs in raw_slides/ instead of moving to slides/
+  --no-cleanup                     Keep intermediate JSON files (move to json/DONE instead of deleting)
+  --compare                        Compare prompts mode: all slides remain in original folders without moving to DONE
 ```
 
 ### Examples
 
 ```bash
-# Process with Claude and merge into master deck
-# Result: Master deck in csv/DONE/, individual CSVs deleted
-python main.py --backend claude --prompt QAClozeSourceYield --merge
+# Default: Process with Gemini, move slides to DONE, merge into master deck
+# Result: slides/DONE/, csv/DONE/_MASTERDECK.csv, JSON deleted
+python main.py --merge
 
-# Process with Gemini with custom tag prefix, no merge
-# Result: All CSVs moved to csv/DONE/
-python main.py --backend gemini --prompt QACloze --tag "Medical_"
+# Process with Claude, custom tag, no merge
+# Result: slides/DONE/, individual CSVs in csv/DONE/
+python main.py --backend claude --prompt QACloze --tag "Medical_"
 
-# Preserve JSON files for inspection (don't delete them)
-# Result: JSON files moved to json/DONE/, raw slides moved to raw_slides/DONE/
-python main.py --backend claude --skip-sanitize --merge
+# Preserve intermediate JSON files for inspection
+# Result: slides/DONE/, json/DONE/, csv/DONE/
+python main.py --backend gemini --no-cleanup --merge
 
-# Process without merging
-# Result: Individual CSV files moved to csv/DONE/
-python main.py --backend claude --prompt QAClozeSourceYield
+# Process raw slides without moving them (skip-sanitize)
+# Result: PDFs stay in raw_slides/DONE/, json/DONE/, csv/DONE/
+python main.py --backend claude --skip-sanitize --no-cleanup --merge
+
+# Compare prompts mode: keep all files in place for re-running
+# Result: All files remain in raw_slides/ and slides/, no DONE folder moves
+python main.py --backend claude --prompt CustomPrompt --compare
+
+# No merge: all CSVs moved to csv/DONE/
+# Result: slides/DONE/, csv/DONE/ (multiple CSV files), JSON deleted
+python main.py --backend gemini
 ```
 
 ## Pipeline Steps
 
 The pipeline always runs through these steps:
 
-1. **Sanitize** - Clean PDF filenames, convert Turkish characters to ASCII, optionally compress large files. Moves PDFs from `data/slides/` → `data/raw_slides/`
+1. **Sanitize** - Clean PDF filenames, convert Turkish characters to ASCII, optionally compress large files. Moves PDFs from `data/raw_slides/` → `data/slides/`
 2. **AI Processing** - Upload PDFs to AI model, generate JSON cards
 3. **Convert to CSV** - Transform JSON cards to CSV format (Front|Back|Tags)
-4. **JSON Handling** - Based on `--skip-sanitize` flag:
-   - **Without `--skip-sanitize`**: JSON files are deleted, raw slides moved to `raw_slides/DONE/`
-   - **With `--skip-sanitize`**: JSON files moved to `json/DONE/` for preservation
-5. **CSV Handling** - Based on `--merge` flag:
-   - **Without `--merge`**: All CSV files moved to `csv/DONE/`
-   - **With `--merge`**: Master deck moved to `csv/DONE/`, individual CSV files deleted
+4. **Cleanup & Organization** - Based on flags:
+   - **PDF Movement** (unless `--compare`):
+     - With `--skip-sanitize`: PDFs move `raw_slides/` → `raw_slides/DONE/`
+     - Without `--skip-sanitize`: PDFs move `slides/` → `slides/DONE/`
+   - **JSON Handling**:
+     - With `--no-cleanup`: JSON files move to `json/DONE/`
+     - Without `--no-cleanup`: JSON files deleted
+   - **CSV Handling**:
+     - With `--merge`: Master deck moved to `csv/DONE/`, individual CSVs deleted
+     - Without `--merge`: All CSVs moved to `csv/DONE/`
+5. **Compare Mode** (with `--compare`):
+   - No files moved to DONE folders
+   - PDFs remain in their original folders for re-processing
 
 ## Configuration
 

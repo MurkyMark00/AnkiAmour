@@ -70,6 +70,12 @@ Examples:
         help="Keep intermediate JSON files and individual CSVs after processing.",
     )
 
+    parser.add_argument(
+        "--compare",
+        action="store_true",
+        help="Compare prompts mode: all slides remain in their original folders without moving to DONE subfolders.",
+    )
+
     args = parser.parse_args()
 
     # Determine merge output filename
@@ -85,6 +91,7 @@ Examples:
             merge_output=merge_output,
             skip_sanitize=args.skip_sanitize,
             cleanup=not args.no_cleanup,
+            compare_mode=args.compare,
         )
     except KeyboardInterrupt:
         print("\n[main] Pipeline interrupted by user.")
